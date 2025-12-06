@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UsersModule } from './modules/users/users.module';
 import Joi from 'joi';
 
 @Module({
@@ -41,6 +42,8 @@ import Joi from 'joi';
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
       }),
     }),
+
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
