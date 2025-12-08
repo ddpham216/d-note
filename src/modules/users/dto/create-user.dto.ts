@@ -8,17 +8,17 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsEmail({}, { message: 'Email không hợp lệ' })
+  @IsEmail({}, { message: 'Email is not valid' })
   email: string;
 
-  @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
-  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
+  @IsNotEmpty({ message: 'Password should not be empty' })
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
   password: string;
 
-  @IsNotEmpty({ message: 'Họ không được để trống' })
+  @IsNotEmpty({ message: 'First name should not be empty' })
   firstName: string;
 
-  @IsNotEmpty({ message: 'Tên không được để trống' })
+  @IsNotEmpty({ message: 'Last name should not be empty' })
   lastName: string;
 
   // Optional fields
@@ -27,6 +27,6 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9+ ]{10,20}$/, { message: 'Số điện thoại không hợp lệ' })
+  @Matches(/^[0-9+ ]{10,20}$/, { message: 'Phone number is not valid' })
   phoneNumber?: string;
 }

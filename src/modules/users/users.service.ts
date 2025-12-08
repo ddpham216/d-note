@@ -22,7 +22,7 @@ export class UsersService {
       where: { email },
     });
     if (existingUser) {
-      throw new ConflictException('Email đã được sử dụng');
+      throw new ConflictException('Email is already in use');
     }
 
     const salt = await bcrypt.genSalt();
@@ -54,5 +54,9 @@ export class UsersService {
 
   remove(id: string) {
     return this.usersRepository.delete(id);
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
   }
 }
