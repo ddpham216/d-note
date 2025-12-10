@@ -27,7 +27,7 @@ const mockLoginResult = {
 
 const mockAuthService = {
   validateUser: jest.fn().mockImplementation(() => mockUser),
-  login: jest.fn().mockImplementation(() => mockLoginResult),
+  login: jest.fn().mockImplementation(() => mockTokens),
   logout: jest.fn().mockImplementation(() => undefined),
   refresh: jest.fn().mockImplementation(() => mockTokens),
 };
@@ -38,7 +38,7 @@ describe('AuthController', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [ AuthController ],
+      controllers: [AuthController],
       providers: [
         {
           provide: AuthService,
