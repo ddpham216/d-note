@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../users/entities/user.entity';
 import ms, { StringValue } from 'ms';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -41,40 +43,7 @@ export class AuthService {
       );
     }
 
-    const payload = { email: user.email, sub: user.id };
-
-    const accessTokenSecret =
-      this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
-    const accessTimeSeconds = this.getDurationInSeconds(
-      'JWT_ACCESS_EXPIRES_IN',
-      '30m',
-    );
-
-    const refreshTokenSecret =
-      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
-    const refreshTimeSeconds = this.getDurationInSeconds(
-      'JWT_REFRESH_EXPIRES_IN',
-      '7d',
-    );
-
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: accessTokenSecret,
-      expiresIn: accessTimeSeconds,
-    });
-
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: refreshTokenSecret,
-      expiresIn: refreshTimeSeconds,
-    });
-
-    await this.storeRefreshToken(refreshToken, user.id);
-
-    return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: accessTimeSeconds,
-      token_type: 'Bearer',
-    };
+    return this.generateAndSaveTokens(user.id, user.email);
   }
 
   async logout(userId: string, refreshToken: string) {
@@ -91,19 +60,19 @@ export class AuthService {
     return true;
   }
 
-  private async storeRefreshToken(token: string, userId: string) {
+  private async storeRefreshToken(
+    token: string,
+    userId: string,
+    ttlSecond: number,
+  ) {
     const expiresAt = new Date();
-    expiresAt.setDate(
-      expiresAt.getDate() +
-        parseInt(
-          this.configService.get<string>('JWT_REFRESH_EXPIRES_IN_DAYS') || '7',
-        ),
-    );
+    expiresAt.setSeconds(expiresAt.getSeconds() + ttlSecond);
 
     const refreshTokenEntity = this.refreshTokenRepository.create({
       token,
       userId,
       expiresAt,
+      isRevoked: false,
     });
 
     await this.refreshTokenRepository.save(refreshTokenEntity);
@@ -124,6 +93,79 @@ export class AuthService {
       const errorMessage = `Configuration Error: Key "${key}" has an invalid duration format.`;
       this.logger.error(errorMessage);
       throw new InternalServerErrorException(errorMessage);
+    }
+  }
+
+  private async generateAndSaveTokens(userId: string, email: string) {
+    const payload = { email, sub: userId };
+
+    const accessTokenSecret =
+      this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
+    const accessTimeSeconds = this.getDurationInSeconds(
+      'JWT_ACCESS_EXPIRES_IN',
+      '30m',
+    );
+
+    const refreshTokenSecret =
+      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+    const refreshTimeSeconds = this.getDurationInSeconds(
+      'JWT_REFRESH_EXPIRES_IN',
+      '7d',
+    );
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: accessTokenSecret,
+        expiresIn: accessTimeSeconds,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: refreshTokenSecret,
+        expiresIn: refreshTimeSeconds,
+      }),
+    ]);
+
+    await this.storeRefreshToken(refreshToken, userId, refreshTimeSeconds);
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: accessTimeSeconds,
+      token_type: 'Bearer',
+    };
+  }
+
+  async refresh(refreshToken: string) {
+    try {
+      const secret =
+        this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
+        refreshToken,
+        {
+          secret,
+        },
+      );
+
+      const refreshTokenEntity = await this.refreshTokenRepository.findOne({
+        where: { token: refreshToken, userId: payload.sub },
+        relations: ['user'],
+      });
+
+      if (!refreshTokenEntity || refreshTokenEntity.isRevoked) {
+        throw new UnauthorizedException('Access denied');
+      }
+
+      if (refreshTokenEntity.expiresAt < new Date()) {
+        throw new UnauthorizedException('Refresh token has expired');
+      }
+
+      await this.refreshTokenRepository.delete({ id: refreshTokenEntity.id });
+
+      return this.generateAndSaveTokens(
+        refreshTokenEntity.userId,
+        refreshTokenEntity.user.email,
+      );
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
     }
   }
 }

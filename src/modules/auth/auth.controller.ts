@@ -12,7 +12,8 @@ import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import type { ICurrentUser } from './interfaces/jwt-payload.interface';
+import type { JwtPayload } from './interfaces/jwt-payload.interface';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -36,11 +37,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(
-    @CurrentUser() user: ICurrentUser,
-    @Body() logoutDto: LogoutDto,
-  ) {
-    console.log(user);
-    return this.authService.logout(user.id, logoutDto.refresh_token);
+  async logout(@CurrentUser() user: JwtPayload, @Body() logoutDto: LogoutDto) {
+    return this.authService.logout(user.sub, logoutDto.refresh_token);
+  }
+
+  @Post('refresh')
+  async refreshToken(@Body() body: RefreshTokenDto) {
+    return this.authService.refresh(body.refresh_token);
   }
 }
