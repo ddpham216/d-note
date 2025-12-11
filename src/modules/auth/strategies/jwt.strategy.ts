@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from 'src/modules/users/users.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { UserStatus } from 'src/modules/users/entities/user-status.enum';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -18,13 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload) {
-    return { id: payload.sub, email: payload.email };
-
-    // const user = await this.userService.findOne(payload.sub);
-    // if (!user || user.status !== UserStatus.ACTIVE) {
-    //   throw new UnauthorizedException('Invalid user credentials');
-    // }
-    // return user;
+  async validate(payload: JwtPayload) {
+    const user = await this.userService.findOne(payload.sub);
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid user credentials');
+    }
+    return user;
   }
 }

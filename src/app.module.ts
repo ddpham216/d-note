@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { UsersModule } from './modules/users/users.module';
 import Joi from 'joi';
 import { AuthModule } from './modules/auth/auth.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { SeedingModule } from './database/seeds/seeding.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { AuthModule } from './modules/auth/auth.module';
 
     UsersModule,
     AuthModule,
+    RolesModule,
+    SeedingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

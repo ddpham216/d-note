@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserStatus } from './user-status.enum';
 import { Exclude } from 'class-transformer';
+import { Role } from 'src/modules/roles/entities/role.entity';
 
 @Entity('users')
 export class User {
@@ -37,6 +39,9 @@ export class User {
     default: UserStatus.INACTIVE,
   })
   status: UserStatus;
+
+  @ManyToOne(() => Role, { eager: true })
+  role: Role;
 
   @CreateDateColumn()
   createdAt: Date;
