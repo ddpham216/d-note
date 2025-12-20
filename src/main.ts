@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,15 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
+  const config = new DocumentBuilder()
+    .setTitle('Sell VPS API')
+    .setDescription('The Sell VPS API description')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
   app.useGlobalInterceptors(new TransformInterceptor(new Reflector()));
@@ -24,6 +34,7 @@ async function bootstrap() {
 
   await app.listen(port);
   Logger.log(`Application is running on: http://localhost:${port}`);
+  Logger.log(`Swagger is running on: http://localhost:${port}/api/docs`);
 }
 
 bootstrap().catch((error) => {
