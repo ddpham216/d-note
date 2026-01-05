@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '../users/entities/user.entity';
 import ms, { StringValue } from 'ms';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { UserStatus } from '../users/entities/user-status.enum';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +32,9 @@ export class AuthService {
   async validateUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
     if (user && (await bcrypt.compare(password, user.password))) {
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new UnauthorizedException('Account is not active');
+      }
       return user;
     }
     return null;
