@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -15,6 +16,8 @@ import { User } from '../users/entities/user.entity';
 import ms, { StringValue } from 'ms';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { UserStatus } from '../users/entities/user-status.enum';
+import { MailService } from '../mail/mail.service';
+import { CreateUserDto } from '../users/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -24,27 +27,105 @@ export class AuthService {
     private userService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
 
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
-  ) {}
+  ) { }
 
   async validateUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
     if (user && (await bcrypt.compare(password, user.password))) {
-      if (user.status !== UserStatus.ACTIVE) {
-        throw new UnauthorizedException('Account is not active');
-      }
+      // Allow login even if inactive - user needs to activate after login
       return user;
     }
     return null;
   }
 
+  async register(createUserDto: CreateUserDto) {
+    // Create the user (will be inactive by default)
+    const user = await this.userService.create(createUserDto);
+
+    // Generate activation code
+    const code = await this.mailService.generateActivationCode(user.id);
+
+    // Send activation email
+    await this.mailService.sendActivationEmail(
+      user.email,
+      user.firstName,
+      code,
+    );
+
+    this.logger.log(`User registered: ${user.email}`);
+
+    return {
+      message: 'Registration successful. Please check your email for the activation code.',
+      email: user.email,
+    };
+  }
+
+  async activateAccount(userId: string, code: string) {
+    // Verify the activation code belongs to this user
+    const codeUserId = await this.mailService.verifyActivationCode(code);
+
+    if (codeUserId !== userId) {
+      throw new BadRequestException('Invalid activation code for this account');
+    }
+
+    // Get the user
+    const user = await this.userService.findOne(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Check if already activated
+    if (user.status === UserStatus.ACTIVE) {
+      throw new BadRequestException('Account is already activated');
+    }
+
+    // Activate the user
+    user.status = UserStatus.ACTIVE;
+    await this.userService.update(userId, { status: UserStatus.ACTIVE });
+
+    this.logger.log(`Account activated: ${user.email}`);
+
+    // Generate and return tokens for automatic login
+    return this.generateAndSaveTokens(user.id, user.email);
+  }
+
+  async resendActivationCode(email: string) {
+    // Find user by email
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('Email not found');
+    }
+
+    // Check if already activated
+    if (user.status === UserStatus.ACTIVE) {
+      throw new BadRequestException('Account is already activated');
+    }
+
+    // Generate new activation code (this will delete old codes)
+    const code = await this.mailService.generateActivationCode(user.id);
+
+    // Send new activation email
+    await this.mailService.sendActivationEmail(
+      user.email,
+      user.firstName,
+      code,
+    );
+
+    this.logger.log(`Activation code resent to: ${user.email}`);
+
+    return {
+      message: 'Activation code has been resent. Please check your email.',
+      email: user.email,
+    };
+  }
+
   async login(user: Pick<User, 'id' | 'email'>) {
     if (!user) {
-      throw new InternalServerErrorException(
-        'Username or password is incorrect',
-      );
+      throw new UnauthorizedException('Username or password is incorrect');
     }
 
     return this.generateAndSaveTokens(user.id, user.email);
@@ -168,7 +249,10 @@ export class AuthService {
         refreshTokenEntity.userId,
         refreshTokenEntity.user.email,
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

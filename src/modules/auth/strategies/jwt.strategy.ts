@@ -16,14 +16,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: JwtPayload) {
+  async validate(req: any, payload: JwtPayload) {
     const user = await this.userService.findOne(payload.sub);
-    if (!user || user.status !== UserStatus.ACTIVE) {
+    
+    if (!user) {
       throw new UnauthorizedException('Invalid user credentials');
     }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      const path = req.originalUrl || req.url || '';
+      if (!path.includes('/activate') && !path.includes('/logout')) {
+        throw new UnauthorizedException('Invalid user credentials');
+      }
+    }
+
     return user;
   }
 }

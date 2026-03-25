@@ -4,10 +4,10 @@ export enum PermissionType {
   USERS_UPDATE = 'users.update',
   USERS_DELETE = 'users.delete',
 
-  VPS_READ = 'vps.read',
-  VPS_CREATE = 'vps.create',
-  VPS_UPDATE = 'vps.update',
-  VPS_DELETE = 'vps.delete',
+  POSTS_READ = 'posts.read',
+  POSTS_CREATE = 'posts.create',
+  POSTS_UPDATE = 'posts.update',
+  POSTS_DELETE = 'posts.delete',
 
   VIEW_DASHBOARD = 'dashboard.view',
 }

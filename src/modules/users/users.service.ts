@@ -13,7 +13,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const { email, password, firstName, lastName, dob, phoneNumber } =
@@ -25,8 +25,7 @@ export class UsersService {
       throw new ConflictException('Email is already in use');
     }
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = this.usersRepository.create({
       email,
@@ -40,23 +39,40 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
-  findAll() {
-    return this.usersRepository.find();
+  // TODO: Implement pagination to prevent memory overflow on large datasets
+  findAll(skip = 0, take = 10) {
+    return this.usersRepository.find({ skip, take });
   }
 
   findOne(id: string) {
     return this.usersRepository.findOne({ where: { id } });
   }
 
-  // update(id: string, updateUserDto: UpdateUserDto) {
-  //   return `This action updates a #${id} user`;
-  // }
+  async update(id: string, updateData: Partial<User>): Promise<User> {
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set(updateData)
+      .where('id = :id', { id })
+      .returning('*')
+      .execute();
+      
+    if (!result.raw.length) {
+      throw new ConflictException('User not found after update');
+    }
+    return result.raw[0] as User;
+  }
 
   remove(id: string) {
     return this.usersRepository.delete(id);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.email = :email', { email })
+      .addSelect('user.password')
+      .getOne();
   }
 }

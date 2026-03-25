@@ -8,6 +8,7 @@ import Joi from 'joi';
 import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SeedingModule } from './database/seeds/seeding.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -24,6 +25,11 @@ import { SeedingModule } from './database/seeds/seeding.module';
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().default(3000),
+        MAIL_HOST: Joi.string().required(),
+        MAIL_PORT: Joi.number().default(587),
+        MAIL_USER: Joi.string().required(),
+        MAIL_PASSWORD: Joi.string().required(),
+        MAIL_FROM: Joi.string().required(),
       }),
       validationOptions: {
         allowUnknown: true,
@@ -50,8 +56,9 @@ import { SeedingModule } from './database/seeds/seeding.module';
     AuthModule,
     RolesModule,
     SeedingModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
