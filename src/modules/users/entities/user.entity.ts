@@ -40,6 +40,12 @@ export class User {
   })
   status: UserStatus;
 
+  @Column({ default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lockoutUntil: Date | null;
+
   @ManyToOne(() => Role, { eager: false })
   role: Role;
 

@@ -12,7 +12,10 @@ export class CreateUserDto {
   email: string;
 
   @IsNotEmpty({ message: 'Password should not be empty' })
-  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'password is too weak. Must contain uppercase, lowercase, and number/special character.',
+  })
   password: string;
 
   @IsNotEmpty({ message: 'First name should not be empty' })

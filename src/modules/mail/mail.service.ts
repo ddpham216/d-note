@@ -78,6 +78,59 @@ export class MailService {
     }
 
     /**
+     * Send password reset email with token
+     */
+    async sendPasswordResetEmail(
+        email: string,
+        firstName: string,
+        token: string,
+    ): Promise<void> {
+        try {
+            await this.mailerService.sendMail({
+                to: email,
+                subject: 'Reset Your Password',
+                template: 'password-reset',
+                context: {
+                    firstName,
+                    token,
+                },
+            });
+
+            this.logger.log(`Password reset email sent to ${email}`);
+        } catch (error) {
+            this.logger.error(`Failed to send password reset email to ${email}`, error);
+            throw new BadRequestException('Failed to send password reset email');
+        }
+    }
+
+    /**
+     * Send security alert notification
+     */
+    async sendSecurityAlert(
+        email: string,
+        firstName: string,
+        actionName: string,
+    ): Promise<void> {
+        try {
+            await this.mailerService.sendMail({
+                to: email,
+                subject: 'Security Alert: Sensitive Action Performed',
+                template: 'security-notification',
+                context: {
+                    firstName,
+                    actionName,
+                    timestamp: new Date().toLocaleString(),
+                },
+            });
+
+            this.logger.log(`Security alert email sent to ${email} for action: ${actionName}`);
+        } catch (error) {
+            this.logger.error(`Failed to send security alert to ${email}`, error);
+            // Don't throw here to avoid blocking the main flow
+        }
+    }
+
+    /**
      * Verify activation code and return userId if valid
      */
     async verifyActivationCode(userId: string, code: string): Promise<boolean> {

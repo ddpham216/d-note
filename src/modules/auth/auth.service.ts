@@ -18,6 +18,13 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { UserStatus } from '../users/entities/user-status.enum';
 import { MailService } from '../mail/mail.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { PasswordReset } from './entities/password-reset.entity';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/password-management.dto';
+import { createHash, randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -31,14 +38,52 @@ export class AuthService {
 
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
+
+    @InjectRepository(PasswordReset)
+    private passwordResetRepository: Repository<PasswordReset>,
   ) { }
 
   async validateUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
-    if (user && (await bcrypt.compare(password, user.password))) {
-      // Allow login even if inactive - user needs to activate after login
+    if (!user) return null;
+
+    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+      const minutesLeft = Math.ceil(
+        (user.lockoutUntil.getTime() - new Date().getTime()) / 60000,
+      );
+      throw new BadRequestException(
+        `Account is temporarily locked. Please try again in ${minutesLeft} minutes.`,
+      );
+    }
+
+    if (await bcrypt.compare(password, user.password)) {
+      if (user.failedLoginAttempts > 0) {
+        await this.userService.update(user.id, {
+          failedLoginAttempts: 0,
+          lockoutUntil: null,
+        });
+      }
       return user;
     }
+
+    // Handle failed attempts
+    const newFailedAttempts = user.failedLoginAttempts + 1;
+    const updateData: any = { failedLoginAttempts: newFailedAttempts };
+
+    if (newFailedAttempts >= 5) {
+      const lockoutUntil = new Date();
+      lockoutUntil.setMinutes(lockoutUntil.getMinutes() + 15);
+      updateData.lockoutUntil = lockoutUntil;
+    }
+
+    await this.userService.update(user.id, updateData);
+
+    if (newFailedAttempts >= 5) {
+      throw new BadRequestException(
+        'Account locked for 15 minutes due to multiple failed attempts.',
+      );
+    }
+
     return null;
   }
 
@@ -257,5 +302,87 @@ export class AuthService {
       }
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+    const { old_password, new_password } = changePasswordDto;
+    const user = await this.userService.findOne(userId);
+    
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Explicitly select password for comparison
+    const userWithPass = await this.userService.findByEmail(user.email);
+    if (!userWithPass) {
+        throw new UnauthorizedException('User not found');
+    }
+    
+    if (!(await bcrypt.compare(old_password, userWithPass.password))) {
+      throw new BadRequestException('Incorrect old password');
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await this.userService.update(userId, { password: hashedPassword });
+
+    await this.mailService.sendSecurityAlert(user.email, user.firstName, 'Password Change');
+
+    this.logger.log(`Password changed for user: ${user.email}`);
+    return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.userService.findByEmail(forgotPasswordDto.email);
+    if (!user) {
+      // Return success anyway to prevent email enumeration
+      return { message: 'If the email exists, a reset link has been sent' };
+    }
+
+    const token = randomBytes(20).toString('hex');
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 mins expiry
+
+    // Delete existing unused tokens
+    await this.passwordResetRepository.delete({ userId: user.id, isUsed: false });
+
+    await this.passwordResetRepository.save({
+      token: hashedToken,
+      userId: user.id,
+      expiresAt,
+    });
+
+    await this.mailService.sendPasswordResetEmail(user.email, user.firstName, token);
+
+    return { message: 'If the email exists, a reset link has been sent' };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { token, new_password } = resetPasswordDto;
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+
+    const resetEntity = await this.passwordResetRepository.findOne({
+      where: { token: hashedToken, isUsed: false },
+      relations: ['user'],
+    });
+
+    if (!resetEntity || resetEntity.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await this.userService.update(resetEntity.userId, { password: hashedPassword });
+
+    resetEntity.isUsed = true;
+    await this.passwordResetRepository.save(resetEntity);
+
+    await this.mailService.sendSecurityAlert(
+      resetEntity.user.email,
+      resetEntity.user.firstName,
+      'Password Reset via Token',
+    );
+
+    this.logger.log(`Password reset successfully for user: ${resetEntity.user.email}`);
+    return { message: 'Password reset successfully' };
   }
 }

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
@@ -26,6 +27,11 @@ import { AuthSuccessResponseDto } from './dto/auth-response.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ResendActivationDto } from './dto/resend-activation.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/password-management.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -84,6 +90,7 @@ export class AuthController {
     return this.authService.activateAccount(user.id, activateDto.code);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('resend-activation')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
@@ -105,6 +112,7 @@ export class AuthController {
     return this.authService.resendActivationCode(resendDto.email);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
@@ -152,5 +160,33 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid refresh token' })
   async refreshToken(@Body() body: RefreshTokenDto) {
     return this.authService.refresh(body.refresh_token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Password changed successfully' })
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, changePasswordDto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Reset link sent if email exists' })
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Password reset successfully' })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }
