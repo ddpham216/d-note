@@ -39,13 +39,28 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
-  // TODO: Implement pagination to prevent memory overflow on large datasets
-  findAll(skip = 0, take = 10) {
-    return this.usersRepository.find({ skip, take });
+  async findAll(skip = 0, take = 10) {
+    const [data, total] = await this.usersRepository.findAndCount({
+      skip,
+      take,
+      relations: ['role'],
+    });
+
+    return {
+      data,
+      total,
+      skip,
+      take,
+      page: Math.floor(skip / take) + 1,
+      lastPage: Math.ceil(total / take) || 1,
+    };
   }
 
   findOne(id: string) {
-    return this.usersRepository.findOne({ where: { id } });
+    return this.usersRepository.findOne({ 
+      where: { id },
+      relations: ['role'],
+    });
   }
 
   async update(id: string, updateData: Partial<User>): Promise<User> {

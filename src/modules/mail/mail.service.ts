@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { ActivationCode } from './entities/activation-code.entity';
@@ -20,7 +21,7 @@ export class MailService {
      * Generate a random 6-digit activation code
      */
     private generateCode(): string {
-        return Math.floor(100000 + Math.random() * 900000).toString();
+        return randomInt(100000, 1000000).toString();
     }
 
     /**
@@ -79,9 +80,9 @@ export class MailService {
     /**
      * Verify activation code and return userId if valid
      */
-    async verifyActivationCode(code: string): Promise<string> {
+    async verifyActivationCode(userId: string, code: string): Promise<boolean> {
         const activationCode = await this.activationCodeRepository.findOne({
-            where: { code },
+            where: { code, userId },
         });
 
         if (!activationCode) {
@@ -100,8 +101,8 @@ export class MailService {
         activationCode.isUsed = true;
         await this.activationCodeRepository.save(activationCode);
 
-        this.logger.log(`Activation code verified for user ${activationCode.userId}`);
-        return activationCode.userId;
+        this.logger.log(`Activation code verified for user ${userId}`);
+        return true;
     }
 
     /**

@@ -46,31 +46,33 @@ export class AuthService {
     // Create the user (will be inactive by default)
     const user = await this.userService.create(createUserDto);
 
-    // Generate activation code
-    const code = await this.mailService.generateActivationCode(user.id);
+    try {
+      // Generate activation code
+      const code = await this.mailService.generateActivationCode(user.id);
 
-    // Send activation email
-    await this.mailService.sendActivationEmail(
-      user.email,
-      user.firstName,
-      code,
-    );
+      // Send activation email
+      await this.mailService.sendActivationEmail(
+        user.email,
+        user.firstName,
+        code,
+      );
 
-    this.logger.log(`User registered: ${user.email}`);
+      this.logger.log(`User registered: ${user.email}`);
 
-    return {
-      message: 'Registration successful. Please check your email for the activation code.',
-      email: user.email,
-    };
+      return {
+        message: 'Registration successful. Please check your email for the activation code.',
+        email: user.email,
+      };
+    } catch (error) {
+      await this.userService.remove(user.id);
+      this.logger.error(`Registration failed for ${user.email}. Rolled back user creation.`, error.stack);
+      throw new InternalServerErrorException('Failed to send activation email, please try again.');
+    }
   }
 
   async activateAccount(userId: string, code: string) {
     // Verify the activation code belongs to this user
-    const codeUserId = await this.mailService.verifyActivationCode(code);
-
-    if (codeUserId !== userId) {
-      throw new BadRequestException('Invalid activation code for this account');
-    }
+    await this.mailService.verifyActivationCode(userId, code);
 
     // Get the user
     const user = await this.userService.findOne(userId);

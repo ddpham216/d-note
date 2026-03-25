@@ -6,22 +6,19 @@ import {
   Param,
   Post,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
-
-  @Post('register')
-  @UseInterceptors(ClassSerializerInterceptor)
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
 
   @ApiExcludeEndpoint()
   @Delete(':id')

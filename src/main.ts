@@ -1,4 +1,5 @@
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -8,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.use(helmet());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

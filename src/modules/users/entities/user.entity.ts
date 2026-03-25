@@ -40,7 +40,7 @@ export class User {
   })
   status: UserStatus;
 
-  @ManyToOne(() => Role, { eager: true })
+  @ManyToOne(() => Role, { eager: false })
   role: Role;
 
   @CreateDateColumn()
