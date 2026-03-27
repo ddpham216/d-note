@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { font-family: sans-serif; padding: 20px; border: 1px solid #ee4444; border-radius: 8px; }
+        .alert { color: #cc0000; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Security Alert</h1>
+        <p>Hello {{firstName}},</p>
+        <p class="alert">A sensitive action was performed on your account: <strong>{{actionName}}</strong></p>
+        <p>If you performed this action, you can safely ignore this email.</p>
+        <p><strong>If you did NOT perform this action, please contact our support team immediately and change your password.</strong></p>
+        <p>Timestamp: {{timestamp}}</p>
+    </div>
+</body>
+</html>
