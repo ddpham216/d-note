@@ -90,7 +90,7 @@ export class AuthController {
     return this.authService.activateAccount(user.id, activateDto.code);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('resend-activation')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
@@ -112,7 +112,7 @@ export class AuthController {
     return this.authService.resendActivationCode(resendDto.email);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
@@ -174,7 +174,7 @@ export class AuthController {
     return this.authService.changePassword(user.id, changePasswordDto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Reset link sent if email exists' })
@@ -182,7 +182,7 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Password reset successfully' })
