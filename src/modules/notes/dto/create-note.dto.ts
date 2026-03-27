@@ -14,6 +14,10 @@ export class CreateNoteDto {
 
   @IsOptional()
   @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
   content?: string;
 
   @IsOptional()

@@ -20,6 +20,9 @@ export class Note {
   @Index()
   slug: string;
 
+  @Column({ nullable: true })
+  title: string;
+
   @Column({ type: 'text', nullable: true })
   content: string;
 

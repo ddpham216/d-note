@@ -19,7 +19,7 @@ export class NotesService {
   }
 
   async create(createNoteDto: CreateNoteDto, userId?: string | null): Promise<Note> {
-    const { slug, content, isLocked, password, expiresAt } = createNoteDto;
+    const { slug, title, content, isLocked, password, expiresAt } = createNoteDto;
 
     let noteSlug = slug;
     
@@ -62,6 +62,7 @@ export class NotesService {
 
     const note = this.notesRepository.create({
       slug: noteSlug,
+      title,
       content,
       isLocked: !!isLocked || !!password,
       password: hashedPassword,
@@ -106,7 +107,7 @@ export class NotesService {
   }
 
   async update(oldSlug: string, updateNoteDto: UpdateNoteDto, userId?: string | null): Promise<Note> {
-    const { slug, content, isLocked, password, expiresAt, currentPassword } = updateNoteDto;
+    const { slug, title, content, isLocked, password, expiresAt, currentPassword } = updateNoteDto;
 
     const note = await this.notesRepository
       .createQueryBuilder('note')
@@ -144,6 +145,7 @@ export class NotesService {
     }
 
     // Update fields
+    if (title !== undefined) note.title = title;
     if (content !== undefined) note.content = content;
     if (isLocked !== undefined) note.isLocked = isLocked;
 
