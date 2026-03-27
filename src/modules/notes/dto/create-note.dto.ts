@@ -27,5 +27,5 @@ export class CreateNoteDto {
 
   @IsOptional()
   @IsDateString()
-  expiresAt?: Date;
+  expiresAt?: Date | null;
 }
