@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserStatus } from './user-status.enum';
+import { UserTier } from './user-tier.enum';
 import { Exclude } from 'class-transformer';
 import { Role } from 'src/modules/roles/entities/role.entity';
 
@@ -39,6 +40,13 @@ export class User {
     default: UserStatus.INACTIVE,
   })
   status: UserStatus;
+
+  @Column({
+    type: 'enum',
+    enum: UserTier,
+    default: UserTier.FREE,
+  })
+  tier: UserTier;
 
   @Column({ default: 0 })
   failedLoginAttempts: number;

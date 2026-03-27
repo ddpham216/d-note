@@ -32,4 +32,8 @@ export class CreateUserDto {
   @IsString()
   @Matches(/^[0-9+ ]{10,20}$/, { message: 'Phone number is not valid' })
   phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  claimNoteSlug?: string;
 }

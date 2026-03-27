@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SeedingModule } from './database/seeds/seeding.module';
 import { MailModule } from './modules/mail/mail.module';
+import { NotesModule } from './modules/notes/notes.module';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 
 @Module({
@@ -65,6 +66,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     RolesModule,
     SeedingModule,
     MailModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [

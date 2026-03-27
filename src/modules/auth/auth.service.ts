@@ -25,6 +25,7 @@ import {
   ResetPasswordDto,
 } from './dto/password-management.dto';
 import { createHash, randomBytes } from 'crypto';
+import { NotesService } from '../notes/notes.service';
 
 @Injectable()
 export class AuthService {
@@ -35,6 +36,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private mailService: MailService,
+    private notesService: NotesService,
 
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
@@ -88,8 +90,13 @@ export class AuthService {
   }
 
   async register(createUserDto: CreateUserDto) {
+    const { claimNoteSlug } = createUserDto;
     // Create the user (will be inactive by default)
     const user = await this.userService.create(createUserDto);
+
+    if (claimNoteSlug) {
+      await this.notesService.claimNote(claimNoteSlug, user.id);
+    }
 
     try {
       // Generate activation code

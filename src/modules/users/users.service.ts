@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { UserTier } from './entities/user-tier.enum';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -34,6 +35,7 @@ export class UsersService {
       lastName,
       dob: dob || null,
       phoneNumber: phoneNumber || null,
+      tier: UserTier.FREE,
     });
 
     return await this.usersRepository.save(user);

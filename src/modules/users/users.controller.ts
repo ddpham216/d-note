@@ -1,15 +1,10 @@
 import {
-  Body,
-  ClassSerializerInterceptor,
   Controller,
   Delete,
   Param,
-  Post,
-  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @ApiExcludeEndpoint()
   @Delete(':id')
