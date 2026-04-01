@@ -59,9 +59,7 @@ export class AuthController {
     return this.authService.register(createUserDto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('activate')
-  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: 'Account activated successfully and tokens returned for automatic login',
@@ -82,12 +80,10 @@ export class AuthController {
   })
 
   @ApiBadRequestResponse({ description: 'Invalid or expired activation code' })
-  @ApiUnauthorizedResponse({ description: 'Not logged in' })
   async activate(
-    @CurrentUser() user: User,
     @Body() activateDto: ActivateAccountDto,
   ) {
-    return this.authService.activateAccount(user.id, activateDto.code);
+    return this.authService.activateAccount(activateDto.email, activateDto.code);
   }
 
   @Throttle({ default: { limit: 15, ttl: 60000 } })

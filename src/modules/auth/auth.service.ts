@@ -122,12 +122,9 @@ export class AuthService {
     }
   }
 
-  async activateAccount(userId: string, code: string) {
-    // Verify the activation code belongs to this user
-    await this.mailService.verifyActivationCode(userId, code);
-
+  async activateAccount(email: string, code: string) {
     // Get the user
-    const user = await this.userService.findOne(userId);
+    const user = await this.userService.findByEmail(email);
     if (!user) {
       throw new BadRequestException('User not found');
     }
@@ -137,9 +134,12 @@ export class AuthService {
       throw new BadRequestException('Account is already activated');
     }
 
+    // Verify the activation code belongs to this user
+    await this.mailService.verifyActivationCode(user.id, code);
+
     // Activate the user
     user.status = UserStatus.ACTIVE;
-    await this.userService.update(userId, { status: UserStatus.ACTIVE });
+    await this.userService.update(user.id, { status: UserStatus.ACTIVE });
 
     this.logger.log(`Account activated: ${user.email}`);
 

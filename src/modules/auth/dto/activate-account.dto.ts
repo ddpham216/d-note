@@ -1,7 +1,14 @@
-import { IsString, Length, Matches } from 'class-validator';
+import { IsString, Length, Matches, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ActivateAccountDto {
+    @ApiProperty({
+        description: 'The email of the user to activate',
+        example: 'user@example.com',
+    })
+    @IsEmail({}, { message: 'Invalid email format' })
+    email: string;
+
     @ApiProperty({
         description: 'The 6-digit activation code sent to your email',
         example: '123456',
