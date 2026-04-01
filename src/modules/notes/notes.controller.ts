@@ -21,8 +21,10 @@ export class NotesController {
 
   @Post(':slug/access')
   @HttpCode(HttpStatus.OK)
-  access(@Param('slug') slug: string, @Body() accessNoteDto: AccessNoteDto) {
-    return this.notesService.findOneBySlug(slug, accessNoteDto.password);
+  @UseGuards(OptionalJwtAuthGuard)
+  access(@Param('slug') slug: string, @Body() accessNoteDto: AccessNoteDto, @Request() req: any) {
+    const userId = req.user?.id || null;
+    return this.notesService.findOneBySlug(slug, accessNoteDto.password, userId);
   }
 
   @Patch(':slug')

@@ -47,13 +47,11 @@ export class NotesService {
     }
 
     let expirationDate: Date | null;
-    if (expiresAt === undefined) {
-      expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 1);
-    } else if (expiresAt === null) {
-      if (!userId) {
-        throw new ForbiddenException('Guest notes cannot be permanent. Please set an expiration date.');
-      }
+    if (expiresAt === undefined || expiresAt === null) {
+      // Tạm thời tắt check guest note expiration theo yêu cầu
+      // if (expiresAt === null && !userId) {
+      //   throw new ForbiddenException('Guest notes cannot be permanent. Please set an expiration date.');
+      // }
       expirationDate = null;
     } else {
       expirationDate = new Date(expiresAt);
@@ -77,17 +75,21 @@ export class NotesService {
     }
   }
 
-  async findOneBySlug(slug: string, password?: string): Promise<Note> {
+  async findOneBySlug(slug: string, password?: string, userId?: string | null): Promise<Note> {
     const now = new Date();
     const note = await this.notesRepository
       .createQueryBuilder('note')
       .where('note.slug = :slug', { slug })
-      .andWhere('note.expiresAt > :now', { now })
+      .andWhere('(note.expiresAt IS NULL OR note.expiresAt > :now)', { now })
       .addSelect('note.password')
       .getOne();
 
     if (!note) {
-      throw new NotFoundException('Note not found or has expired');
+      return await this.create({
+        slug,
+        title: '',
+        content: '',
+      }, userId);
     }
 
     if (note.isLocked) {
@@ -151,9 +153,10 @@ export class NotesService {
 
     if (expiresAt !== undefined) {
       if (expiresAt === null) {
-        if (!note.userId && !userId) {
-          throw new ForbiddenException('Guest notes cannot be permanent. Please set an expiration date.');
-        }
+        // Tạm thời tắt
+        // if (!note.userId && !userId) {
+        //   throw new ForbiddenException('Guest notes cannot be permanent. Please set an expiration date.');
+        // }
         note.expiresAt = null as any;
       } else {
         note.expiresAt = new Date(expiresAt);
