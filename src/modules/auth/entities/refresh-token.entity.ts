@@ -1,10 +1,9 @@
-import { User } from '../../users/entities/user.entity';
+import { UserType } from 'src/common/constants/user-type.enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -25,10 +24,14 @@ export class RefreshToken {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @Column({
+    type: 'enum',
+    enum: UserType,
+    default: UserType.USER,
+  })
+  userType: UserType;
 
-  @Column()
+  @Index()
+  @Column({ type: 'uuid' })
   userId: string;
 }

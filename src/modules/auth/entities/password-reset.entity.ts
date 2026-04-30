@@ -1,11 +1,9 @@
-import { User } from '../../users/entities/user.entity';
+import { UserType } from 'src/common/constants/user-type.enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -27,10 +25,14 @@ export class PasswordReset {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @Column({
+    type: 'enum',
+    enum: UserType,
+    default: UserType.USER,
+  })
+  userType: UserType;
 
-  @Column()
+  @Index()
+  @Column({ type: 'uuid' })
   userId: string;
 }

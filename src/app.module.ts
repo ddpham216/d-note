@@ -11,7 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SeedingModule } from './database/seeds/seeding.module';
 import { MailModule } from './modules/mail/mail.module';
-import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { AdminsModule } from './modules/admins/admins.module';
 
 @Module({
   imports: [
@@ -65,6 +65,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     RolesModule,
     SeedingModule,
     MailModule,
+    AdminsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -72,10 +73,6 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
     },
   ],
 })

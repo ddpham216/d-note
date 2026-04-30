@@ -7,11 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
-import { User } from '../../users/entities/user.entity';
-
-interface RequestWithUser {
-  user: User;
-}
+import { UserType } from 'src/common/constants/user-type.enum';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -32,16 +28,30 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest<RequestWithUser>();
+    const { user } = context.switchToHttp().getRequest();
+
+    if (!user) {
+      return false;
+    }
+
+    let userRoles: string[] = [];
+    let userPermissions: string[] = [];
+
+    if (user.userType === UserType.ADMIN) {
+      userRoles = user.roles?.map((r) => r.name) || [];
+      userPermissions = user.roles?.flatMap((r) => r.permissions?.map((p) => p.slug) || []) || [];
+    } else {
+      userRoles = user.role ? [user.role.name] : [];
+      userPermissions = user.role?.permissions?.map((p) => p.slug) || [];
+    }
 
     if (requiredRoles) {
-      const hasRole = requiredRoles.some((role) => user.role?.name === role);
+      const hasRole = requiredRoles.some((role) => userRoles.includes(role));
       if (!hasRole)
         throw new ForbiddenException('Forbidden resource for your role');
     }
 
     if (requiredPermissions) {
-      const userPermissions = user.role?.permissions.map((p) => p.slug) || [];
       const hasPermission = requiredPermissions.every((perm) =>
         userPermissions.includes(perm),
       );

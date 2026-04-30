@@ -14,6 +14,7 @@ import { LogoutDto } from './dto/logout.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { UserType } from 'src/common/constants/user-type.enum';
 import { User } from '../users/entities/user.entity';
 import {
   ApiTags,
@@ -130,7 +131,28 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.authService.login(user);
+    return this.authService.login(user, UserType.USER);
+  }
+
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'Admin logged in successfully',
+    type: AuthSuccessResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  async adminLogin(@Body() loginDto: LoginDto) {
+    const admin = await this.authService.validateAdmin(
+      loginDto.email,
+      loginDto.password,
+    );
+
+    if (!admin) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.authService.login(admin, UserType.ADMIN);
   }
 
   @UseGuards(JwtAuthGuard)

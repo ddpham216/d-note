@@ -12,11 +12,8 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../users/entities/user.entity';
-import ms, { StringValue } from 'ms';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
-import { UserStatus } from '../users/entities/user-status.enum';
-import { MailService } from '../mail/mail.service';
+import { UserType } from 'src/common/constants/user-type.enum';
+import { AdminsService } from '../admins/admins.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { PasswordReset } from './entities/password-reset.entity';
 import {
@@ -25,6 +22,10 @@ import {
   ResetPasswordDto,
 } from './dto/password-management.dto';
 import { createHash, randomBytes } from 'crypto';
+import { MailService } from '../mail/mail.service';
+import { UserStatus } from '../users/entities/user-status.enum';
+import ms, { StringValue } from 'ms';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -32,6 +33,7 @@ export class AuthService {
 
   constructor(
     private userService: UsersService,
+    private adminService: AdminsService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private mailService: MailService,
@@ -87,6 +89,21 @@ export class AuthService {
     return null;
   }
 
+  async validateAdmin(email: string, password: string) {
+    const admin = await this.adminService.findByEmail(email);
+    if (!admin) return null;
+
+    if (!admin.isActive) {
+      throw new UnauthorizedException('Admin account is inactive');
+    }
+
+    if (await bcrypt.compare(password, admin.password)) {
+      return admin;
+    }
+
+    return null;
+  }
+
   async register(createUserDto: CreateUserDto) {
     // Create the user (will be inactive by default)
     const user = await this.userService.create(createUserDto);
@@ -137,7 +154,7 @@ export class AuthService {
     this.logger.log(`Account activated: ${user.email}`);
 
     // Generate and return tokens for automatic login
-    return this.generateAndSaveTokens(user.id, user.email);
+    return this.generateAndSaveTokens(user.id, user.email, UserType.USER);
   }
 
   async resendActivationCode(email: string) {
@@ -170,12 +187,12 @@ export class AuthService {
     };
   }
 
-  async login(user: Pick<User, 'id' | 'email'>) {
+  async login(user: { id: string; email: string }, userType: UserType = UserType.USER) {
     if (!user) {
       throw new UnauthorizedException('Username or password is incorrect');
     }
 
-    return this.generateAndSaveTokens(user.id, user.email);
+    return this.generateAndSaveTokens(user.id, user.email, userType);
   }
 
   async logout(userId: string, refreshToken: string) {
@@ -195,6 +212,7 @@ export class AuthService {
   private async storeRefreshToken(
     token: string,
     userId: string,
+    userType: UserType,
     ttlSecond: number,
   ) {
     const expiresAt = new Date();
@@ -203,6 +221,7 @@ export class AuthService {
     const refreshTokenEntity = this.refreshTokenRepository.create({
       token,
       userId,
+      userType,
       expiresAt,
       isRevoked: false,
     });
@@ -228,8 +247,8 @@ export class AuthService {
     }
   }
 
-  private async generateAndSaveTokens(userId: string, email: string) {
-    const payload = { email, sub: userId };
+  private async generateAndSaveTokens(userId: string, email: string, userType: UserType) {
+    const payload = { email, sub: userId, userType };
 
     const accessTokenSecret =
       this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
@@ -256,7 +275,7 @@ export class AuthService {
       }),
     ]);
 
-    await this.storeRefreshToken(refreshToken, userId, refreshTimeSeconds);
+    await this.storeRefreshToken(refreshToken, userId, userType, refreshTimeSeconds);
 
     return {
       access_token: accessToken,
@@ -279,7 +298,6 @@ export class AuthService {
 
       const refreshTokenEntity = await this.refreshTokenRepository.findOne({
         where: { token: refreshToken, userId: payload.sub },
-        relations: ['user'],
       });
 
       if (!refreshTokenEntity || refreshTokenEntity.isRevoked) {
@@ -292,9 +310,21 @@ export class AuthService {
 
       await this.refreshTokenRepository.delete({ id: refreshTokenEntity.id });
 
+      let email = '';
+      if (refreshTokenEntity.userType === UserType.ADMIN) {
+        const admin = await this.adminService.findOneOrNull(refreshTokenEntity.userId);
+        if (!admin) throw new UnauthorizedException('Admin not found');
+        email = admin.email;
+      } else {
+        const user = await this.userService.findOne(refreshTokenEntity.userId);
+        if (!user) throw new UnauthorizedException('User not found');
+        email = user.email;
+      }
+
       return this.generateAndSaveTokens(
         refreshTokenEntity.userId,
-        refreshTokenEntity.user.email,
+        email,
+        refreshTokenEntity.userType,
       );
     } catch (error) {
       if (error instanceof UnauthorizedException) {
@@ -307,7 +337,7 @@ export class AuthService {
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const { old_password, new_password } = changePasswordDto;
     const user = await this.userService.findOne(userId);
-    
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -315,9 +345,9 @@ export class AuthService {
     // Explicitly select password for comparison
     const userWithPass = await this.userService.findByEmail(user.email);
     if (!userWithPass) {
-        throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('User not found');
     }
-    
+
     if (!(await bcrypt.compare(old_password, userWithPass.password))) {
       throw new BadRequestException('Incorrect old password');
     }
@@ -363,7 +393,6 @@ export class AuthService {
 
     const resetEntity = await this.passwordResetRepository.findOne({
       where: { token: hashedToken, isUsed: false },
-      relations: ['user'],
     });
 
     if (!resetEntity || resetEntity.expiresAt < new Date()) {
@@ -376,13 +405,16 @@ export class AuthService {
     resetEntity.isUsed = true;
     await this.passwordResetRepository.save(resetEntity);
 
-    await this.mailService.sendSecurityAlert(
-      resetEntity.user.email,
-      resetEntity.user.firstName,
-      'Password Reset via Token',
-    );
+    const user = await this.userService.findOne(resetEntity.userId);
+    if (user) {
+      await this.mailService.sendSecurityAlert(
+        user.email,
+        user.firstName,
+        'Password Reset via Token',
+      );
+      this.logger.log(`Password reset successfully for user: ${user.email}`);
+    }
 
-    this.logger.log(`Password reset successfully for user: ${resetEntity.user.email}`);
     return { message: 'Password reset successfully' };
   }
 }
