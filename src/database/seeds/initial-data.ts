@@ -10,3 +10,10 @@ export const INITIAL_ROLES_PERMISSIONS = {
   [RoleType.COLLABORATOR]: [],
   [RoleType.USER]: [],
 };
+
+export const DEFAULT_ADMIN = {
+  email: 'admin@admin.com',
+  password: 'AdminPassword@123',
+  firstName: 'Super',
+  lastName: 'Admin',
+};

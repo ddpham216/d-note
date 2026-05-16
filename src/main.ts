@@ -26,8 +26,8 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Sell VPS API')
-    .setDescription('The Sell VPS API description')
+    .setTitle('DDP Blog API')
+    .setDescription('The DDP Blog API description')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -2,9 +2,11 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Permission } from 'src/modules/roles/entities/permission.entity';
 import { Role } from 'src/modules/roles/entities/role.entity';
+import { Admin } from 'src/modules/admins/entities/admin.entity';
 import { Repository } from 'typeorm';
-import { INITIAL_ROLES_PERMISSIONS } from './initial-data';
+import { INITIAL_ROLES_PERMISSIONS, DEFAULT_ADMIN } from './initial-data';
 import { RoleType } from 'src/common/constants/role.enum';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class SeedingService implements OnModuleInit {
@@ -15,12 +17,15 @@ export class SeedingService implements OnModuleInit {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
   ) {}
 
   async onModuleInit() {
     this.logger.log('Checking database seeds...');
     await this.seedPermission();
     await this.seedRole();
+    await this.seedAdmin();
     this.logger.log('Database seeding completed!');
   }
 
@@ -69,6 +74,31 @@ export class SeedingService implements OnModuleInit {
 
       role.permissions = permissionEntities;
       await this.roleRepository.save(role);
+    }
+  }
+
+  private async seedAdmin() {
+    const adminEmail = DEFAULT_ADMIN.email;
+    const exists = await this.adminRepository.findOne({
+      where: { email: adminEmail },
+    });
+
+    if (!exists) {
+      const adminRole = await this.roleRepository.findOne({
+        where: { name: RoleType.ADMIN },
+      });
+
+      const hashedPassword = await bcrypt.hash(DEFAULT_ADMIN.password, 10);
+
+      const admin = this.adminRepository.create({
+        ...DEFAULT_ADMIN,
+        password: hashedPassword,
+        roles: adminRole ? [adminRole] : [],
+        isActive: true,
+      });
+
+      await this.adminRepository.save(admin);
+      this.logger.log(`Created default admin account: ${adminEmail}`);
     }
   }
 }

@@ -12,6 +12,8 @@ import { RolesModule } from './modules/roles/roles.module';
 import { SeedingModule } from './database/seeds/seeding.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AdminsModule } from './modules/admins/admins.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { PostsModule } from './modules/posts/posts.module';
 
 @Module({
   imports: [
@@ -66,6 +68,8 @@ import { AdminsModule } from './modules/admins/admins.module';
     SeedingModule,
     MailModule,
     AdminsModule,
+    CategoriesModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [
