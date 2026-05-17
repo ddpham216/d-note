@@ -7,9 +7,12 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Category } from 'src/modules/categories/entities/category.entity';
 import { Admin } from 'src/modules/admins/entities/admin.entity';
+import { Media } from 'src/modules/media/entities/media.entity';
 import { PostStatus } from './post-status.enum';
 
 @Entity('posts')
@@ -66,6 +69,10 @@ export class Post {
   @ManyToOne(() => Category, (category) => category.posts)
   @JoinColumn({ name: 'categoryId' })
   category: Category;
+
+  @ManyToMany(() => Media, (media) => media.posts)
+  @JoinTable({ name: 'post_media' })
+  media: Media[];
 
   @CreateDateColumn()
   createdAt: Date;

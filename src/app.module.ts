@@ -14,6 +14,9 @@ import { MailModule } from './modules/mail/mail.module';
 import { AdminsModule } from './modules/admins/admins.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { PostsModule } from './modules/posts/posts.module';
+import { MediaModule } from './modules/media/media.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -40,6 +43,10 @@ import { PostsModule } from './modules/posts/posts.module';
         allowUnknown: true,
         abortEarly: true,
       },
+    }),
+
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
     }),
 
     ThrottlerModule.forRoot([{
@@ -70,6 +77,7 @@ import { PostsModule } from './modules/posts/posts.module';
     AdminsModule,
     CategoriesModule,
     PostsModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [

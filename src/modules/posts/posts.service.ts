@@ -4,17 +4,45 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { PostStatus } from './entities/post-status.enum';
+import { Media } from '../media/entities/media.entity';
 
 @Injectable()
 export class PostsService {
   constructor(
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
+    @InjectRepository(Media)
+    private readonly mediaRepository: Repository<Media>,
   ) {}
+
+  private extractMediaFilenames(content: string, thumbnail: string | null): string[] {
+    const filenames = new Set<string>();
+
+    if (thumbnail) {
+      const match = thumbnail.match(/\/([^/]+\.webp)$/i);
+      if (match) {
+        filenames.add(match[1]);
+      }
+    }
+
+    if (content) {
+      const regex = /!\[.*?\]\((.*?)\)/g;
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        const url = match[1];
+        const fileMatch = url.match(/\/([^/]+\.webp)$/i);
+        if (fileMatch) {
+          filenames.add(fileMatch[1]);
+        }
+      }
+    }
+
+    return Array.from(filenames);
+  }
 
   async create(createPostDto: CreatePostDto, authorId: string): Promise<Post> {
     const existing = await this.postRepository.findOne({
@@ -30,6 +58,21 @@ export class PostsService {
       publishedAt:
         createPostDto.status === PostStatus.PUBLISHED ? new Date() : null,
     });
+
+    const filenames = this.extractMediaFilenames(
+      createPostDto.content || '',
+      createPostDto.thumbnail || null,
+    );
+
+    if (filenames.length > 0) {
+      const media = await this.mediaRepository.find({
+        where: { filename: In(filenames) },
+      });
+      post.media = media;
+    } else {
+      post.media = [];
+    }
+
     return await this.postRepository.save(post);
   }
 
@@ -90,6 +133,21 @@ export class PostsService {
     }
 
     Object.assign(post, updatePostDto);
+
+    const filenames = this.extractMediaFilenames(
+      post.content || '',
+      post.thumbnail || null,
+    );
+
+    if (filenames.length > 0) {
+      const media = await this.mediaRepository.find({
+        where: { filename: In(filenames) },
+      });
+      post.media = media;
+    } else {
+      post.media = [];
+    }
+
     return await this.postRepository.save(post);
   }
 
