@@ -18,6 +18,7 @@ import { MediaModule } from './modules/media/media.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { NotesModule } from './modules/notes/notes.module';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 
     ThrottlerModule.forRoot([{
       ttl: 60000,
-      limit: 10,
+      limit: 100,
     }]),
 
     TypeOrmModule.forRootAsync({
@@ -80,6 +81,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     PostsModule,
     MediaModule,
     DashboardModule,
+    NotesModule
   ],
   controllers: [AppController],
   providers: [
