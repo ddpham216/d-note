@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, InternalServerErrorException, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, InternalServerErrorException, UnauthorizedException, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, MoreThan } from 'typeorm';
 import { Note } from './entities/note.entity';
@@ -18,10 +18,47 @@ export class NotesService {
     return randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
   }
 
+  private validateSlug(slug: string): boolean {
+    if (!slug) return false;
+    
+    // 1. Sensible maximum length limits
+    if (slug.length > 50) return false;
+
+    // 2. Format validation: slugs MUST only contain alphanumeric, hyphens, and underscores.
+    // This instantly blocks any paths with dots (e.g. .env, phpinfo.php, xmlrpc.php, sitemap.xml)
+    const slugRegex = /^[a-zA-Z0-9-_]+$/;
+    if (!slugRegex.test(slug)) {
+      return false;
+    }
+
+    // 3. Known scanner/attack directory keywords (Wordpress, script exploits, etc.)
+    const suspiciousPatterns = [
+      /wp-/,
+      /xmlrpc/,
+      /cgi-bin/,
+      /phpinfo/,
+      /actuator/,
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(slug.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   async create(createNoteDto: CreateNoteDto, userId?: string | null): Promise<Note> {
     const { slug, title, content, isLocked, password, expiresAt } = createNoteDto;
 
     let noteSlug = slug;
+    
+    if (noteSlug) {
+      if (!this.validateSlug(noteSlug)) {
+        throw new BadRequestException('Invalid slug format');
+      }
+    }
     
     if (!noteSlug) {
       let isUnique = false;
@@ -76,6 +113,9 @@ export class NotesService {
   }
 
   async findOneBySlug(slug: string, password?: string, userId?: string | null): Promise<Note> {
+    if (!this.validateSlug(slug)) {
+      throw new BadRequestException('Invalid slug format');
+    }
     const now = new Date();
     const note = await this.notesRepository
       .createQueryBuilder('note')
