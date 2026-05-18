@@ -49,6 +49,11 @@ export class CreatePostDto {
   @IsString()
   metaKeywords?: string;
 
+  @ApiProperty({ example: 'nestjs tutorial', required: false })
+  @IsOptional()
+  @IsString()
+  primaryKeyword?: string;
+
   @ApiProperty({ enum: PostStatus, default: PostStatus.DRAFT })
   @IsOptional()
   @IsEnum(PostStatus)
@@ -100,6 +105,11 @@ export class UpdatePostDto {
   @IsOptional()
   @IsString()
   metaKeywords?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  primaryKeyword?: string;
 
   @ApiProperty({ enum: PostStatus, required: false })
   @IsOptional()

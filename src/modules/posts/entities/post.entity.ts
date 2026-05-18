@@ -46,6 +46,9 @@ export class Post {
   @Column({ type: 'varchar', nullable: true })
   metaKeywords: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  primaryKeyword: string | null;
+
   @Column({
     type: 'enum',
     enum: PostStatus,

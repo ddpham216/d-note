@@ -23,10 +23,44 @@ export class CategoriesService {
     return await this.categoryRepository.save(category);
   }
 
-  async findAll() {
-    return await this.categoryRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(options?: {
+    page?: number | string;
+    limit?: number | string;
+    search?: string;
+  }) {
+    if (!options || (!options.page && !options.limit && !options.search)) {
+      return await this.categoryRepository.find({
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    const page = Number(options.page) || 1;
+    const limit = Number(options.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = this.categoryRepository
+      .createQueryBuilder('category')
+      .orderBy('category.createdAt', 'DESC');
+
+    if (options.search) {
+      query.andWhere(
+        '(LOWER(category.name) LIKE :search OR LOWER(category.slug) LIKE :search)',
+        { search: `%${options.search.toLowerCase()}%` },
+      );
+    }
+
+    const [categories, total] = await query
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      categories,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

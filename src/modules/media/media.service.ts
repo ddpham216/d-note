@@ -46,11 +46,46 @@ export class MediaService {
     return await this.mediaRepository.save(media);
   }
 
-  async findAll() {
-    return await this.mediaRepository.find({
-      order: { createdAt: 'DESC' },
-      relations: ['uploadedBy', 'posts'],
-    });
+  async findAll(options?: {
+    page?: number | string;
+    limit?: number | string;
+    search?: string;
+    inUse?: string;
+  }) {
+    const page = Number(options?.page) || 1;
+    const limit = Number(options?.limit) || 15;
+    const skip = (page - 1) * limit;
+
+    const query = this.mediaRepository
+      .createQueryBuilder('media')
+      .leftJoinAndSelect('media.uploadedBy', 'uploadedBy')
+      .leftJoinAndSelect('media.posts', 'posts')
+      .orderBy('media.createdAt', 'DESC');
+
+    if (options?.search) {
+      query.andWhere('LOWER(media.originalName) LIKE :search', {
+        search: `%${options.search.toLowerCase()}%`,
+      });
+    }
+
+    if (options?.inUse === 'true') {
+      query.andWhere('posts.id IS NOT NULL');
+    } else if (options?.inUse === 'false') {
+      query.andWhere('posts.id IS NULL');
+    }
+
+    const [mediaList, total] = await query
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: mediaList,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async remove(id: string) {

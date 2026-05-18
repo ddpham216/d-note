@@ -34,10 +34,26 @@ export class PostsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all posts' })
+  @ApiOperation({ summary: 'Get all posts with pagination and filters' })
   @ApiQuery({ name: 'status', enum: PostStatus, required: false })
-  findAll(@Query('status') status?: PostStatus) {
-    return this.postsService.findAll(status);
+  @ApiQuery({ name: 'search', type: String, required: false })
+  @ApiQuery({ name: 'categoryId', type: String, required: false })
+  @ApiQuery({ name: 'page', type: Number, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  findAll(
+    @Query('status') status?: PostStatus,
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.postsService.findAll({
+      status,
+      search,
+      categoryId,
+      page,
+      limit,
+    });
   }
 
   @Get(':id')

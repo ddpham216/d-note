@@ -17,6 +17,7 @@ import { PostsModule } from './modules/posts/posts.module';
 import { MediaModule } from './modules/media/media.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { join } from 'path';
     CategoriesModule,
     PostsModule,
     MediaModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -76,18 +76,51 @@ export class PostsService {
     return await this.postRepository.save(post);
   }
 
-  async findAll(status?: PostStatus) {
+  async findAll(options: {
+    status?: PostStatus;
+    search?: string;
+    categoryId?: string;
+    page?: number | string;
+    limit?: number | string;
+  }) {
+    const page = Number(options.page) || 1;
+    const limit = Number(options.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const query = this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
       .leftJoinAndSelect('post.author', 'author')
       .orderBy('post.createdAt', 'DESC');
 
-    if (status) {
-      query.andWhere('post.status = :status', { status });
+    if (options.status) {
+      query.andWhere('post.status = :status', { status: options.status });
     }
 
-    return await query.getMany();
+    if (options.search) {
+      query.andWhere('LOWER(post.title) LIKE :search', {
+        search: `%${options.search.toLowerCase()}%`,
+      });
+    }
+
+    if (options.categoryId) {
+      query.andWhere('post.categoryId = :categoryId', {
+        categoryId: options.categoryId,
+      });
+    }
+
+    const [posts, total] = await query
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      posts,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

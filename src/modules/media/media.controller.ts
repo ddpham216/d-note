@@ -8,6 +8,7 @@ import {
   UploadedFile,
   UseGuards,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MediaService } from './media.service';
@@ -56,8 +57,13 @@ export class MediaController {
   @Roles(RoleType.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List all uploaded media files (Admin only)' })
-  findAll() {
-    return this.mediaService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('inUse') inUse?: string,
+  ) {
+    return this.mediaService.findAll({ page, limit, search, inUse });
   }
 
   @Delete(':id')
