@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, InternalServerErrorException, UnauthorizedException, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, InternalServerErrorException, UnauthorizedException, ForbiddenException, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, MoreThan } from 'typeorm';
 import { Note } from './entities/note.entity';
@@ -6,9 +6,12 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class NotesService {
+  private readonly logger = new Logger(NotesService.name);
+
   constructor(
     @InjectRepository(Note)
     private notesRepository: Repository<Note>,
@@ -219,6 +222,28 @@ export class NotesService {
     if (note) {
       note.userId = userId;
       await this.notesRepository.save(note);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleCleanEmptyNotes() {
+    this.logger.log('Starting scheduled cleanup of empty notes...');
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    try {
+      const result = await this.notesRepository
+        .createQueryBuilder()
+        .delete()
+        .from(Note)
+        .where('(content IS NULL OR content = :emptyContent)', { emptyContent: '' })
+        .andWhere('(title IS NULL OR title = :emptyTitle)', { emptyTitle: '' })
+        .andWhere('isLocked = :isLocked', { isLocked: false })
+        .andWhere('createdAt < :oneHourAgo', { oneHourAgo })
+        .execute();
+
+      this.logger.log(`Cleanup complete. Deleted ${result.affected || 0} empty notes.`);
+    } catch (error) {
+      this.logger.error('Failed to run scheduled cleanup of empty notes:', error);
     }
   }
 }
